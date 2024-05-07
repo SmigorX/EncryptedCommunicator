@@ -1,0 +1,29 @@
+services:
+  server-backend:
+    build: ./server/backend
+    networks:
+      - internal
+
+  server-frontend:
+    build: ./server/frontend
+    ports:
+      - "5001:5001"
+    networks:
+      - internal
+
+  client-backend:
+    build: ./client/back
+    networks:
+      - internal
+
+  client-frontend:
+    build: ./client/front
+    ports:
+      - "5003:5003"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
