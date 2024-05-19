@@ -1,0 +1,27 @@
+services:
+  server-backend:
+    build: ./backend
+    environment:
+      - LISTENER=5005
+      - ADDRESS=localhost
+    expose:
+      - "5004"
+    ports:
+      - "5005:5004"
+    networks:
+      - internal
+
+  server-frontend:
+    build: ./frontend
+    environment:
+      - PORT=5001
+    expose:
+      - "5001"
+    ports:
+      - "5001:5001"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

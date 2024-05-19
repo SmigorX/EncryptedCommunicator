@@ -1,0 +1,20 @@
+services:
+  client-backend:
+    build: ./back
+    environment:
+      - LISTENER=5004
+      - REST=5002
+    expose:
+      - "5004"
+      - "5002"
+    ports:
+      - "5004:5004"
+
+  client-frontend:
+    build: ./front
+    environment:
+      - PORT=5003
+    expose:
+      - "5003"
+    ports:
+      - "5003:5003"
