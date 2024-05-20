@@ -37,18 +37,24 @@ fn sign (message: &[u8], keypair: &Ed25519KeyPair) -> Vec<u8> {
 }
 
 fn establishing_websocket() -> WebSocket<MaybeTlsStream<TcpStream>> {
-    let port = match env::var("LISTENER") {
-        Ok(val) => val,
-        Err(e) => panic!("Couldn't read LISTENER port env: {}", e),
-    };
+    println!("test line 40");
+    //let port = match env::var("LISTENER") {
+    //    Ok(val) => val,
+    //    Err(e) => panic!("Couldn't read LISTENER port env: {}", e),
+    //};
+    let port = 5004;
     let (websocket, _) =
         loop {
-            match connect(format!("ws://client-backend:{}", port)) {
+            //match connect(format!("ws://host.docker.internal:{}", port)) {
+            match connect(format!("ws://127.0.0.1:{}", port)) {
                 Ok(result) => {
                     println!("connected");
                     break result;
                 },
-                Err(_) => continue
+                Err(_) => {
+                    println!("pinging host network: {}", port);
+                    continue
+                }
             };
         };
     return websocket
@@ -163,28 +169,29 @@ fn decrypt
 }
 
 fn file_check() -> Result<File, io::Error> {
-    let file = match File::open("messages.txt") {
+    let file = match File::create("messages.txt") {
         Ok(file) => {
             println!("File opened successfully.");
             file
         }
-        Err(ref error) if error.kind() == io::ErrorKind::NotFound => {
-            match File::create("messages.txt") {
-                Ok(file) => {
-                    println!("File created.");
-                    file
-                }
-                Err(err) => return Err(err),
-            }
-        }
+        //Err(ref error) if error.kind() == io::ErrorKind::NotFound => {
+        //    match File::create("messages.txt") {
+        //        Ok(file) => {
+        //            println!("File created.");
+        //            file
+        //        }
+        //        Err(err) => return Err(err),
+        //    }
+        //}
         Err(error) => return Err(error),
     };
     Ok(file)
 }
 
-fn write_message_to_file(message: Vec<u8>, file: &mut File) {
-    file.write_all(&message).unwrap();
-    file.write_all(b"\n").unwrap();
+fn write_message_to_file(message: Vec<u8>, file: &mut File) -> std::io::Result<()> {
+    file.write_all(&message)?;
+    file.write_all(b"\n")?;
+    Ok(())
 }
 
 fn receive_message
@@ -247,6 +254,8 @@ async fn main() -> Result<(), rocket::Error> {
         let message = receive_message(&encrypted_message, &tag,
                                       &signature, &peer_signature_verification_key,
                                       &mut opening_key);
-        write_message_to_file(message, &mut file)
+        if let Err(e) = write_message_to_file(message, &mut file) {
+            eprintln!("Error writing message to file: {:?}", e);
+        }
     }
 }

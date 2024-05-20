@@ -4,7 +4,7 @@ const fs = require('fs');
 
 const server = http.createServer((req, res) => {
     if (req.url === '/data') {
-        const backendUrl = 'http://server-backend:5004/messages';
+        const backendUrl = 'http://127.0.0.1:5006/messages';
         http.get(backendUrl, (backendRes) => {
             let responseData = '';
 

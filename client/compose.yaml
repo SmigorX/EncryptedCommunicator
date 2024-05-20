@@ -7,8 +7,9 @@ services:
     expose:
       - "5004"
       - "5002"
-    ports:
-      - "5004:5004"
+    network_mode: "host"
+    #ports:
+    #  - "5004:5004"
 
   client-frontend:
     build: ./front
@@ -16,5 +17,6 @@ services:
       - PORT=5003
     expose:
       - "5003"
-    ports:
-      - "5003:5003"
+    network_mode: "host"
+    #ports:
+    #  - "5003:5003"

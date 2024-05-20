@@ -1,11 +1,22 @@
 services:
   server-backend:
-    build: ./server/backend
+    build: ./server//backend
+    environment:
+      - LISTENER=5005
+      - ADDRESS=localhost
+    expose:
+      - "5004"
+    ports:
+      - "5005:5004"
     networks:
       - internal
 
   server-frontend:
     build: ./server/frontend
+    environment:
+      - PORT=5001
+    expose:
+      - "5001"
     ports:
       - "5001:5001"
     networks:
@@ -13,17 +24,24 @@ services:
 
   client-backend:
     build: ./client/back
-    networks:
-      - internal
+    environment:
+      - LISTENER=5004
+      - REST=5002
+    expose:
+      - "5004"
+      - "5002"
+    ports:
+      - "5004:5004"
 
   client-frontend:
     build: ./client/front
+    environment:
+      - PORT=5003
+    expose:
+      - "5003"
     ports:
       - "5003:5003"
-    networks:
-      - internal
 
 networks:
   internal:
     driver: bridge
-

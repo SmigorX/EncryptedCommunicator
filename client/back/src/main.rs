@@ -40,6 +40,7 @@ fn establish_listener() -> Result<TcpListener, std::io::Error> {
         Ok(val) => val,
         Err(e) => panic!("Couldn't read LISTENER port env: {}", e),
     };
+
     match TcpListener::bind(format!("0.0.0.0:{}", port)) {
         Ok(listener) => Ok(listener),
         Err(e) => {
@@ -50,7 +51,10 @@ fn establish_listener() -> Result<TcpListener, std::io::Error> {
 }
 
 fn establishing_websocket() -> WebSocket<TcpStream> {
-    let listener = establish_listener().unwrap();
+    let listener = match establish_listener() {
+        Ok(k) => k,
+        Err(E) => panic!("Error whilst establishing listener: {}", E)
+    };
 
     println!("Waiting for incoming connection...");
     loop {
@@ -219,8 +223,7 @@ fn my_endpoint(state: &rocket::State<MySharedState>, input: String) -> Status {
 
 #[tokio::main]
 async fn main() -> Result<(), rocket::Error> {
-    let socket=
-        Arc::new(
+    let socket = Arc::new(
             std::sync::Mutex::new(
                 establishing_websocket()
             )
@@ -246,6 +249,8 @@ async fn main() -> Result<(), rocket::Error> {
     };
     let portw: u16 = portw.parse().expect("PORT must be a valid integer");
 
+    println!("waiting for messages");
+
     let figment = rocket::Config::figment()
         .merge(("address", "0.0.0.0"))
         .merge(("port", portw));
@@ -255,5 +260,8 @@ async fn main() -> Result<(), rocket::Error> {
         .mount("/", routes![my_endpoint])
         .launch()
         .await?;
+
+    println!("rocket launched");
+
     Ok(())
 }

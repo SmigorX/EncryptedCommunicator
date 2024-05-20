@@ -12,16 +12,17 @@ const server = http.createServer((req, res) => {
             console.log('Received text:', data);
 
             const options = {
-                hostname: 'client-backend',
+                hostname: '127.0.0.1',
                 port: 5002,
                 path: '/',
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/text'
+                    'Content-Type': 'text/plain',
+                    'Content-Length': Buffer.byteLength(data) // Set Content-Length
                 }
             };
 
-            const request = https.request(options, response => {
+            const request = http.request(options, response => {
                 console.log(`Response from client-backend: ${response.statusCode}`);
                 res.writeHead(200, { 'Content-Type': 'text/plain' });
                 res.end('Text received and forwarded successfully');
@@ -33,13 +34,13 @@ const server = http.createServer((req, res) => {
                 res.end('Error forwarding text');
             });
 
-            request.write(data);
+            request.write(data); // Write the data to the request body
             request.end();
         });
 
     } else if (req.url === '/') {
         // Serve the HTML file
-        fs.readFile('index.html', (err, data) => {
+        fs.readFile('/usr/src/app/index.html', (err, data) => {
             if (err) {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Error loading index.html');
@@ -54,7 +55,7 @@ const server = http.createServer((req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5003;
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
