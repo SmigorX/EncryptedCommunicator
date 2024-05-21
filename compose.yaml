@@ -1,0 +1,36 @@
+services:
+  server-backend:
+    build: ./server//backend
+    environment:
+      - LISTENER=5005
+    expose:
+      - "5004"
+    network_mode: "host"
+
+  server-frontend:
+    build: ./server/frontend
+    environment:
+      - PORT=5001
+    expose:
+      - "5001"
+    network_mode: "host"
+
+
+  client-backend:
+    build: ./client/back
+    environment:
+      - LISTENER=5004
+      - REST=5002
+    expose:
+      - "5004"
+      - "5002"
+    network_mode: "host"
+
+
+  client-frontend:
+    build: ./client/front
+    environment:
+      - PORT=5003
+    expose:
+      - "5003"
+    network_mode: "host"

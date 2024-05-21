@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receiver</title>
+  <style>
+      body{
+        background-color: #8c3362;
+        color: white;
+      }
+      #data-container {
+        border-radius: 10px;
+        padding-top: 10px;
+        background-color: #FFFFFF;
+        position: fixed;
+        width: 50%;
+        height: 100%;
+        left: 25%;
+        display: flex;
+        flex-direction: column;
+        overflow: scroll;
+        align-items: center;
+      }
+
+      .message-container {
+        width: 95%;
+        height: auto;
+        border-radius: 10px;
+        margin-bottom: 5px;
+        padding: 5px;
+        word-wrap: break-word;
+        background-color: #6c338c;
+        overflow: auto;
+      }
+  </style>
+</head>
+<body>
+<div id="data-container"></div>
+<script>
+    function fetchDataAndUpdate() {
+        fetch("/data")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(data => {
+                const lines = data.split('\n');
+
+                const dataContainer = document.getElementById('data-container');
+                dataContainer.innerHTML = '';
+
+                lines.forEach(line => {
+                    if (line.trim() === '') {
+                        return;
+                    }
+                    const divElement = document.createElement('div');
+                    divElement.textContent = line;
+                    divElement.classList.add('message-container'); // Add a CSS class
+                    dataContainer.appendChild(divElement);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+    }
+
+    fetchDataAndUpdate();
+
+    setInterval(fetchDataAndUpdate, 1000)
+</script>
+</body>
+</html>

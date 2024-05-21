@@ -1,6 +1,4 @@
-# EncryptedCommunicator
-A demo of an encrypted communicator in rust
-
-ENVs:
-LISTENER: specifies port to listen for websocket connection
-REST: port to communicate with the frontend
+How to use:
+1. run "docker compose up"
+2. go to http://127.0.0.1:5003/
+3. go to http://127.0.0.1:5001/
