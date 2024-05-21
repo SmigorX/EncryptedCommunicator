@@ -3,13 +3,9 @@ services:
     build: ./server//backend
     environment:
       - LISTENER=5005
-      - ADDRESS=localhost
     expose:
       - "5004"
-    ports:
-      - "5005:5004"
-    networks:
-      - internal
+    network_mode: "host"
 
   server-frontend:
     build: ./server/frontend
@@ -17,10 +13,8 @@ services:
       - PORT=5001
     expose:
       - "5001"
-    ports:
-      - "5001:5001"
-    networks:
-      - internal
+    network_mode: "host"
+
 
   client-backend:
     build: ./client/back
@@ -30,8 +24,8 @@ services:
     expose:
       - "5004"
       - "5002"
-    ports:
-      - "5004:5004"
+    network_mode: "host"
+
 
   client-frontend:
     build: ./client/front
@@ -39,9 +33,4 @@ services:
       - PORT=5003
     expose:
       - "5003"
-    ports:
-      - "5003:5003"
-
-networks:
-  internal:
-    driver: bridge
+    network_mode: "host"

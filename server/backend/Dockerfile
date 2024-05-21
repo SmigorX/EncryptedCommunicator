@@ -18,11 +18,6 @@ COPY start.sh /usr/src/app/start.sh
 
 RUN touch messages.txt
 
-ENV LISTENER=5005
-ENV CLIENT=client-backend
-
-EXPOSE 5004
-
 RUN adduser --disabled-password appuser
 RUN usermod -aG nginx appuser
 

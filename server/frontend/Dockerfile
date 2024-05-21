@@ -7,10 +7,6 @@ COPY server.js /usr/src/app/server.js
 RUN adduser --disabled-password appuser
 RUN chown -R appuser /usr/src/app
 
-ENV PORT=5001
-
-EXPOSE 5001
-
 USER appuser
 
 ENTRYPOINT node /usr/src/app/server.js

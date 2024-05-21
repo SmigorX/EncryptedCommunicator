@@ -9,7 +9,7 @@ use ring::signature::Ed25519KeyPair;
 use tungstenite::{accept, Message, WebSocket};
 use std::env;
 use rocket::http::Status;
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex, Arc, MutexGuard};
 
 #[macro_use] extern crate rocket;
 
@@ -53,7 +53,7 @@ fn establish_listener() -> Result<TcpListener, std::io::Error> {
 fn establishing_websocket() -> WebSocket<TcpStream> {
     let listener = match establish_listener() {
         Ok(k) => k,
-        Err(E) => panic!("Error whilst establishing listener: {}", E)
+        Err(e) => panic!("Error whilst establishing listener: {}", e)
     };
 
     println!("Waiting for incoming connection...");
@@ -81,6 +81,20 @@ fn establishing_websocket() -> WebSocket<TcpStream> {
 
 }
 
+fn reading_loop (socket: &mut MutexGuard<WebSocket<TcpStream>>) -> Vec<u8> {
+    loop {
+        match socket.read() {
+            Ok(msg) => {
+                match msg {
+                    Message::Binary(bin) => return bin,
+                    _ => continue
+                }
+            }
+            Err(_) => continue
+        };
+    };
+}
+
 async fn handshake (socket: Arc<Mutex<WebSocket<TcpStream>>>, signing_keypair: &Ed25519KeyPair)
               -> ([u8; 32], ring::signature::UnparsedPublicKey<Vec<u8>>)
 {
@@ -88,45 +102,18 @@ async fn handshake (socket: Arc<Mutex<WebSocket<TcpStream>>>, signing_keypair: &
     let public_key = signing_keypair.public_key().as_ref().to_vec();
     let signature = sign(&dh_public, signing_keypair);
 
-    let mut socket = socket.lock().unwrap();
+    let mut socket = match socket.lock() {
+        Ok(k) => k,
+        Err(e) => panic!("Couldn't lock the websocket: {}", e)
+    };
 
     let _ = socket.send(Message::Binary(dh_public));
     let _ = socket.send(Message::Binary(signature));
     let _ = socket.send(Message::Binary(public_key));
 
-    let peer_dh_public = loop {
-        match socket.read() {
-            Ok(msg) => {
-                match msg {
-                    Message::Binary(bin) => { break bin },
-                    _ => continue
-                }
-            }
-            Err(e) => panic!("Error while reading dh_key: {}", e)
-        };
-    };
-    let peer_signature = loop {
-        match socket.read() {
-            Ok(msg) => {
-                match msg {
-                    Message::Binary(bin) => { break bin },
-                    _ => continue
-                }
-            }
-            Err(e) => panic!("Error while reading signature: {}", e)
-        };
-    };
-    let peer_verification = loop {
-        match socket.read() {
-            Ok(msg) => {
-                match msg {
-                    Message::Binary(bin) => { break bin },
-                    _ => continue
-                }
-            }
-            Err(e) => panic!("Error while reading signature: {}", e)
-        };
-    };
+    let peer_dh_public = reading_loop(&mut socket);
+    let peer_signature = reading_loop(&mut socket);
+    let peer_verification = reading_loop(&mut socket);
 
     let peer_verification = signature::UnparsedPublicKey::new(&signature::ED25519, peer_verification);
     match peer_verification.verify(&peer_dh_public, &peer_signature) {
@@ -186,7 +173,6 @@ fn send_message
     sealing_key: &mut aead::SealingKey<CounterNonceSequence>
 )
 {
-    println!("sending_message1");
     let (tag, encrypted_message) = encrypt(message.as_ref(), sealing_key);
 
     let tag_and_enc_message = [tag.as_ref(), &encrypted_message].concat();
@@ -194,12 +180,10 @@ fn send_message
 
     let signature = sign(&tag_and_enc_message, &locked_key);
     let mut socket = socket.lock().unwrap();
-    println!("sending a bin blob");
     let _ = socket.send(Message::Binary(encrypted_message));
     let _ = socket.send(Message::Binary(tag.as_ref().to_vec()));
     let _ = socket.send(Message::Binary(signature));
-    println!("send_message2");
-
+    println!("my_endpoint Send the message over websocket");
 }
 
 struct MySharedState {
@@ -214,10 +198,8 @@ fn my_endpoint(state: &rocket::State<MySharedState>, input: String) -> Status {
     let mut sealing_key = &mut *state.inner().sealing_key.lock().unwrap();
     let socket = state.inner().socket.clone();
     let signing_keypair = &state.inner().signing_keypair;
-    println!("my_endpoint middle message");
     let message = &input;
     send_message(socket, message, signing_keypair, &mut sealing_key);
-    println!("my_endpoint Send the message over websocket");
     Status::Ok
 }
 

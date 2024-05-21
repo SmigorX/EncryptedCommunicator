@@ -13,6 +13,7 @@ use std::{env, sync::{Arc, Mutex}};
 use std::fs::File;
 use std::io;
 use std::process::exit;
+use std::sync::MutexGuard;
 
 
 fn signing_keys_generator() -> Ed25519KeyPair {
@@ -38,10 +39,10 @@ fn sign (message: &[u8], keypair: &Ed25519KeyPair) -> Vec<u8> {
 
 fn establishing_websocket() -> WebSocket<MaybeTlsStream<TcpStream>> {
     println!("test line 40");
-    //let port = match env::var("LISTENER") {
-    //    Ok(val) => val,
-    //    Err(e) => panic!("Couldn't read LISTENER port env: {}", e),
-    //};
+    let port = match env::var("LISTENER") {
+        Ok(val) => val,
+        Err(e) => panic!("Couldn't read LISTENER port env: {}", e),
+    };
     let port = 5004;
     let (websocket, _) =
         loop {
@@ -60,59 +61,34 @@ fn establishing_websocket() -> WebSocket<MaybeTlsStream<TcpStream>> {
     return websocket
 }
 
+fn reading_loop (socket: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> Vec<u8> {
+    loop {
+        match socket.read() {
+            Ok(msg) => {
+                match msg {
+                    Message::Binary(bin) => return bin,
+                    _ => continue
+                }
+            }
+            Err(_) => continue
+        };
+    };
+}
+
 fn handshake (socket: &mut WebSocket<MaybeTlsStream<TcpStream>>, signing_keypair: &Ed25519KeyPair)
-              -> ([u8; 32], ring::signature::UnparsedPublicKey<Vec<u8>>)
+                    -> ([u8; 32], ring::signature::UnparsedPublicKey<Vec<u8>>)
 {
     let (dh_private, dh_public) = diffie_hellman();
     let public_key = signing_keypair.public_key().as_ref().to_vec();
     let signature = sign(&dh_public, signing_keypair);
 
-    match socket.send(Message::Binary(dh_public)) {
-        Err(e) => eprintln!("Error whilst sending dh handshake Binary1 {}", e),
-        _ => ()
-    };
-    match socket.send(Message::Binary(signature)) {
-        Err(e) => eprintln!("Error whilst sending dh handshake Binary2 {}", e),
-        _ => ()
-    };
-    match socket.send(Message::Binary(public_key)) {
-        Err(e) => eprintln!("Error whilst sending dh handshake Binary3 {}", e),
-        _ => ()
-    };
+    let _ = socket.send(Message::Binary(dh_public));
+    let _ = socket.send(Message::Binary(signature));
+    let _ = socket.send(Message::Binary(public_key));
 
-    let peer_dh_public = loop {
-        match socket.read() {
-            Ok(msg) => {
-                match msg {
-                    Message::Binary(bin) => { break bin },
-                    _ => continue
-                }
-            }
-            Err(e) => panic!("Error while reading handshake1: {}", e)
-        };
-    };
-    let peer_signature = loop {
-        match socket.read() {
-            Ok(msg) => {
-                match msg {
-                    Message::Binary(bin) => { break bin },
-                    _ => continue
-                }
-            }
-            Err(e) => panic!("Error while reading handshake2: {}", e)
-        };
-    };
-    let peer_verification = loop {
-        match socket.read() {
-            Ok(msg) => {
-                match msg {
-                    Message::Binary(bin) => { break bin },
-                    _ => continue
-                }
-            }
-            Err(e) => panic!("Error while reading handshake3: {}", e)
-        };
-    };
+    let peer_dh_public = reading_loop(socket);
+    let peer_signature = reading_loop(socket);
+    let peer_verification = reading_loop(socket);
 
     let peer_verification = signature::UnparsedPublicKey::new(&signature::ED25519, peer_verification);
     match peer_verification.verify(&peer_dh_public, &peer_signature) {
@@ -128,6 +104,7 @@ fn handshake (socket: &mut WebSocket<MaybeTlsStream<TcpStream>>, signing_keypair
         Err(e) => panic!("Couldn't derive a common symmetric key: {}", e),
         Ok(k) => k,
     };
+
     return (symmetric_key, peer_verification);
 }
 
@@ -164,25 +141,16 @@ fn decrypt
     let associated_data = aead::Aad::empty();
     let mut cypher_text_with_tag = [encrypted_message, tag.as_ref()].concat();
     let decrypted_data = opening_key.open_in_place( associated_data, &mut cypher_text_with_tag).unwrap().to_owned();
-    println!("Decyphered {}", String::from_utf8(decrypted_data.to_vec()).unwrap());
+    println!("Deciphered: {}", String::from_utf8(decrypted_data.to_vec()).unwrap());
     return decrypted_data;
 }
 
 fn file_check() -> Result<File, io::Error> {
     let file = match File::create("messages.txt") {
         Ok(file) => {
-            println!("File opened successfully.");
+            println!("File opened successfully");
             file
         }
-        //Err(ref error) if error.kind() == io::ErrorKind::NotFound => {
-        //    match File::create("messages.txt") {
-        //        Ok(file) => {
-        //            println!("File created.");
-        //            file
-        //        }
-        //        Err(err) => return Err(err),
-        //    }
-        //}
         Err(error) => return Err(error),
     };
     Ok(file)

@@ -1,6 +1,5 @@
 const http = require('http');
 const fs = require('fs');
-const https = require('https');
 
 const server = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/send-text') {
