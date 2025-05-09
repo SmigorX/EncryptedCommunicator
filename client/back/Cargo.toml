@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 tungstenite = "0.21.0"
-ring = "0.17.8"
+ring = "0.17.13"
 tokio = { version = "1.37.0", features = ["full"] }
 http = "1.1.0"
 rocket = "0.5.0"
